@@ -300,7 +300,7 @@ Agent 类型: {agent_type}
         if raw_input:
             template_examples = get_relevant_examples(raw_input, limit=TEMPLATE_QUOTA)
             if template_examples:
-                logger.debug(f"从模板库获取 {len(template_examples)} 个相关模板")
+                logger.info(f"从模板库获取 {len(template_examples)} 个相关模板")
             examples.extend(template_examples)
         
         if raw_input:
@@ -310,13 +310,13 @@ Agent 类型: {agent_type}
                 n_results=SUCCESS_QUOTA
             )
             if similar_workflows:
-                logger.debug(f"从成功案例库获取 {len(similar_workflows)} 个相似案例")
+                logger.info(f"从成功案例库获取 {len(similar_workflows)} 个相似案例")
             examples.extend([w['workflow_json'] for w in similar_workflows])
         
         if examples:
             examples_text = format_examples_for_prompt(examples)
             base_prompt += "\n\n" + examples_text
-            logger.debug(f"共注入 {len(examples)} 个示例到提示词")
+            logger.info(f"共注入 {len(examples)} 个示例到提示词")
         
         return base_prompt
 

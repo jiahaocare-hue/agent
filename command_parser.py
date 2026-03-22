@@ -248,15 +248,33 @@ class CommandExecutor:
     def execute_clear(self) -> str:
         """清除 MainAgent 的历史记忆（清空 checkpoints 表数据）"""
         import sqlite3
-        db_path = "main_agent_checkpoint.db"
+        from config import settings
+        
+        db_path = settings.main_agent_checkpoint_db
+        
         try:
             conn = sqlite3.connect(db_path)
             cursor = conn.cursor()
+            
+            cursor.execute("SELECT COUNT(*) FROM checkpoints")
+            count = cursor.fetchone()[0]
+            
+            if count == 0:
+                conn.close()
+                return "记忆库为空，无需清除。"
+            
+            message = f"当前记忆库有 {count} 条记录，确认清除吗？"
+            
+            if not prompt_confirmation(message):
+                conn.close()
+                return "清除操作已取消"
+            
             cursor.execute("DELETE FROM checkpoints")
             deleted_count = cursor.rowcount
             conn.commit()
             conn.close()
             return f"已清除 MainAgent 的历史记忆（删除了 {deleted_count} 条记录）。"
+            
         except sqlite3.OperationalError as e:
             if "no such table" in str(e):
                 return "历史记忆表不存在，无需清除。"

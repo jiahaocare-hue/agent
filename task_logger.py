@@ -13,10 +13,13 @@ class TaskLogger:
         logger.log_tool_result("read_skill", "技能文档内容...")
     """
     
-    def __init__(self, task_id: int, log_dir: str = "logs"):
+    def __init__(self, task_id: int, log_dir: str = None):
         self.task_id = task_id
+        if log_dir is None:
+            from config import settings
+            log_dir = settings.logs_dir
         self.log_dir = Path(log_dir)
-        self.log_dir.mkdir(exist_ok=True)
+        self.log_dir.mkdir(parents=True, exist_ok=True)
         self.log_file = self.log_dir / f"task_{task_id}.log"
         self.prefix = f"[Task {task_id}]"
     

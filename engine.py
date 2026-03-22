@@ -146,7 +146,7 @@ class BackendEngine:
         for task in blocked_tasks:
             if self._all_dependencies_met(task):
                 self.repo.update_status(task['task_id'], 'pending')
-                logger.debug(f"Unblocked task {task['task_id']} ({task['task_name']})")
+                logger.info(f"Unblocked task {task['task_id']} ({task['task_name']})")
 
     def _dispatch_pending_tasks(self):
         with self._lock:
@@ -179,13 +179,13 @@ class BackendEngine:
         """获取现有工作流（恢复或父任务）"""
         existing_workflow = graph_executor.get_workflow(task_id)
         if existing_workflow:
-            logger.debug(f"Found existing workflow for task {task_id} (recovery)")
+            logger.info(f"Found existing workflow for task {task_id} (recovery)")
             return existing_workflow.get('workflow_json')
         
         if parent_task_id:
             parent_workflow = workflow_repo.get_workflow(parent_task_id)
             if parent_workflow:
-                logger.debug(f"Using workflow from parent task {parent_task_id}")
+                logger.info(f"Using workflow from parent task {parent_task_id}")
                 return parent_workflow.get('workflow_json')
         
         return None
@@ -309,7 +309,7 @@ class BackendEngine:
                 workflow_json = self._generate_workflow_with_retry(
                     subagent, current_message, thread_id, task_id
                 )
-                logger.debug("generate workflow done")
+                logger.info("generate workflow done")
             except UserCancelledException as e:
                 logger.info(f"用户取消操作: {str(e)}")
                 return None, False
@@ -357,10 +357,10 @@ class BackendEngine:
                 }
 
             if workflow_generated:
-                logger.debug(f"Saving workflow for task {task_id}...")
+                logger.info(f"Saving workflow for task {task_id}...")
                 graph_executor.save_workflow(task_id, workflow_json)
 
-            logger.debug(f"Building graph for task {task_id}...")
+            logger.info(f"Building graph for task {task_id}...")
             graph = graph_executor.build_graph(workflow_json)
 
             initial_state = {
@@ -375,6 +375,7 @@ class BackendEngine:
             result = graph_executor.execute(graph, initial_state, task_id)
 
             output = result.get("output", "")
+            node_outputs = result.get("node_outputs", {})
             logger.info(f"Task {task_id} completed. Output: {output[:1000]}...")
 
             task = self.repo.get_task(task_id)
@@ -383,6 +384,19 @@ class BackendEngine:
                     "task_id": task_id,
                     "status": "cancelled",
                     "output": output,
+                }
+
+            has_error = any(
+                node_output.get("error") is True
+                for node_output in node_outputs.values()
+                if isinstance(node_output, dict)
+            )
+
+            if has_error:
+                return {
+                    "task_id": task_id,
+                    "status": "failed",
+                    "error": output,
                 }
 
             return {
@@ -421,7 +435,7 @@ class BackendEngine:
                         workflow_json=workflow_json,
                         task_type=task.get("task_type", "general")
                     )
-                    logger.debug(f"Saved successful workflow to vector store for task {task_id}")
+                    logger.info(f"Saved successful workflow to vector store for task {task_id}")
             elif status == "cancelled":
                 self.repo.update_status(task_id, "cancelled")
                 logger.info(f"Task {task_id} was cancelled")

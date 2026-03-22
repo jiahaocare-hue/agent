@@ -280,10 +280,10 @@ class GraphExecutor:
         
         existing_state = compiled_graph.get_state(config)
         if existing_state and existing_state.values:
-            logger.debug(f"Found checkpoint for task {task_id}, resuming from checkpoint...")
+            logger.info(f"Found checkpoint for task {task_id}, resuming from checkpoint...")
             result = compiled_graph.invoke(None, config)
         else:
-            logger.debug(f"No checkpoint found for task {task_id}, starting fresh...")
+            logger.info(f"No checkpoint found for task {task_id}, starting fresh...")
             logger.info(f"Starting workflow execution...")
             result = compiled_graph.invoke(initial_state, config)
         
@@ -306,7 +306,7 @@ class GraphExecutor:
             node_id = node_def.node_id
             task_id = state.get("task_id", 0)
             
-            logger.debug(f"Executing node: {node_id}")
+            logger.info(f"Executing node: {node_id}")
             
             if self.check_cancellation(task_id):
                 return {
@@ -329,7 +329,7 @@ class GraphExecutor:
                 node_output = {"output": str(result)}
             
             import json
-            logger.debug(f"Node output: {json.dumps(node_output, ensure_ascii=False)[:300]}")
+            logger.info(f"Node output: {json.dumps(node_output, ensure_ascii=False)[:300]}")
             
             return {
                 "current_node": node_id,
@@ -411,9 +411,9 @@ class GraphExecutor:
             stdout = self.smart_decode(result.stdout).strip()
             stderr = self.smart_decode(result.stderr).strip()
             
-            logger.debug(f"Script stdout: {stdout[:500]}")
+            logger.info(f"Script stdout: {stdout[:500]}")
             if stderr:
-                logger.debug(f"Script stderr: {stderr[:500]}")
+                logger.info(f"Script stderr: {stderr[:500]}")
 
             if result.returncode == 0:
                 try:

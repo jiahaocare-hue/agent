@@ -240,7 +240,10 @@ class TaskRepository:
 
 
 class WorkflowRepository:
-    def __init__(self, db_path: str = "tasks.db"):
+    def __init__(self, db_path: str = None):
+        if db_path is None:
+            from config import settings
+            db_path = settings.tasks_db_path
         self.db_path = db_path
         self._init_db()
 

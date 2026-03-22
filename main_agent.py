@@ -169,7 +169,42 @@ class MainAgent:
 
 ## 任务拆分规则（极其重要）
 
-**规则**：只有当子任务属于**不同类型**时，才使用多任务模式（tasks 非空）。
+**核心原则**：任务拆分是基于**任务类型**，而不是**执行步骤**！
+
+### 正确的拆分示例
+
+✅ 用户说"发邮件给张三，然后打印文件"
+- 邮件任务 (email) 
+- 打印任务 (print)
+- 结果：多任务模式，两个不同类型的任务
+
+✅ 用户说"查询会议室状态，然后发邮件通知"
+- 会议室查询 (meeting)
+- 邮件发送 (email)
+- 结果：多任务模式，两个不同类型的任务
+
+### 错误的拆分示例（绝对禁止）
+
+❌ 用户说"查询B会议室状态，如果可用则创建腾讯会议"
+- 错误拆分：[查询会议室 (meeting), 创建会议 (meeting)]
+- 正确做法：单任务模式 (meeting)，让 SubAgent 生成条件工作流
+
+❌ 用户说"先检查房间A，再检查房间B"
+- 错误拆分：[检查房间A (meeting), 检查房间B (meeting)]
+- 正确做法：单任务模式 (meeting)，让 SubAgent 生成串行工作流
+
+❌ 用户说"同时查询会议室和创建会议"
+- 错误拆分：[查询会议室 (meeting), 创建会议 (meeting)]
+- 正确做法：单任务模式 (meeting)，让 SubAgent 生成并行工作流
+
+### 判断流程
+
+1. 用户任务包含几个**不同类型**的操作？
+   - 只有1种类型 → 单任务模式（tasks 为空）
+   - 多种类型 → 多任务模式（tasks 非空）
+
+2. 同一类型的多步骤操作怎么处理？
+   → 单任务模式，让 SubAgent 在工作流中处理步骤顺序和条件分支
 
 ## 并行执行说明
 
@@ -287,16 +322,16 @@ class MainAgent:
 
             content = str(message_obj.content)
             if content.strip():
-                logger.debug(f"思考: {content[:200]}")
+                logger.info(f"思考: {content[:200]}")
             
             if has_stream_tools or has_normal_tools:
                 tools = message_obj.tool_call_chunks if has_stream_tools else message_obj.tool_calls
                 for tool in tools:
                     tool_name = tool.get('name')
                     if tool_name:
-                        logger.debug(f"调用工具: {tool_name}")
+                        logger.info(f"调用工具: {tool_name}")
                         return
         
         if hasattr(message_obj, 'name') and hasattr(message_obj, 'content') and getattr(message_obj, 'type', None) == "tool":
             content = str(message_obj.content)[:200]
-            logger.debug(f"工具返回 ({message_obj.name}): {content}")
+            logger.info(f"工具返回 ({message_obj.name}): {content}")

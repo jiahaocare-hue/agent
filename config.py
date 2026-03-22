@@ -13,6 +13,8 @@ class Settings(BaseSettings):
     tasks_db_path: str = "data/tasks.db"
     checkpoint_db_path: str = "data/checkpoints.db"
     main_agent_checkpoint_db: str = "data/main_agent_checkpoint.db"
+    chroma_db_path: str = "data/chroma_db"
+    logs_dir: str = "data/logs"
     
     max_workers: int = 3
     scheduler_timeout: int = 5

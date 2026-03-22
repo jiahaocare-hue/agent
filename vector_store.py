@@ -1,3 +1,7 @@
+import posthog
+posthog.disabled = True
+posthog.capture = lambda *args, **kwargs: None
+
 import chromadb
 import json
 import uuid
@@ -5,7 +9,10 @@ from typing import List, Optional, Dict
 
 
 class WorkflowVectorStore:
-    def __init__(self, persist_directory: str = "./chroma_db"):
+    def __init__(self, persist_directory: str = None):
+        if persist_directory is None:
+            from config import settings
+            persist_directory = settings.chroma_db_path
         self.client = chromadb.PersistentClient(path=persist_directory)
         self.collection = self.client.get_or_create_collection(
             name="successful_workflows",
