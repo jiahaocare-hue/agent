@@ -1,0 +1,28 @@
+# Python 版本要求: 3.11.x
+# 推荐使用 Python 3.11.15
+
+# 安装方式一：创建 Conda 环境
+# conda create -n agent python=3.11
+# conda activate agent
+# pip install -r requirements.txt
+
+# 安装方式二：使用 venv
+# python -m venv venv
+# venv\Scripts\activate  # Windows
+# source venv/bin/activate  # Linux/Mac
+# pip install -r requirements.txt
+
+# 核心依赖
+langchain==1.2.12
+langchain-core==1.2.19
+langchain-openai==1.1.11
+langgraph==1.1.2
+langgraph-checkpoint-sqlite==3.0.3
+pydantic==2.12.5
+pyyaml==6.0.3
+chromadb
+posthog
+
+# 配置管理
+python-dotenv
+pydantic-settings
