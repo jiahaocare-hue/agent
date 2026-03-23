@@ -19,6 +19,7 @@ class Settings(BaseSettings):
     max_workers: int = 3
     scheduler_timeout: int = 5
     max_workflow_retries: int = 5
+    embedding_model_path: str = ""
     
     log_level: str = "INFO"
     log_format: str = "%(asctime)s - %(name)s - %(levelname)s - %(message)s"

@@ -3,20 +3,40 @@ posthog.disabled = True
 posthog.capture = lambda *args, **kwargs: None
 
 import chromadb
+from chromadb.utils.embedding_functions import SentenceTransformerEmbeddingFunction
 import json
 import uuid
+from pathlib import Path
 from typing import List, Optional, Dict
+from logging_config import get_logger
+
+logger = get_logger(__name__)
 
 
 class WorkflowVectorStore:
-    def __init__(self, persist_directory: str = None):
+    def __init__(self, persist_directory: str = None, embedding_model_path: str = None):
         if persist_directory is None:
             from config import settings
             persist_directory = settings.chroma_db_path
+            if embedding_model_path is None:
+                embedding_model_path = settings.embedding_model_path
+        
         self.client = chromadb.PersistentClient(path=persist_directory)
+        
+        embedding_function = None
+        if embedding_model_path:
+            path = Path(embedding_model_path)
+            if not path.is_absolute():
+                path = Path(__file__).parent / path
+            logger.info(f"Using local embedding model from: {path}")
+            embedding_function = SentenceTransformerEmbeddingFunction(
+                model_name=str(path)
+            )
+        
         self.collection = self.client.get_or_create_collection(
             name="successful_workflows",
-            metadata={"hnsw:space": "cosine"}
+            metadata={"hnsw:space": "cosine"},
+            embedding_function=embedding_function
         )
     
     def add_workflow(self, raw_input: str, workflow_json: dict, task_type: str, metadata: dict = None):

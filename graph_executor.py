@@ -139,16 +139,16 @@ class WorkflowBlueprint(BaseModel):
     edges: List[EdgeDef] = Field(default_factory=list, description="边数组")
 
 
-def render_params(raw_value: str, current_state: dict) -> str:
+def _render_string(raw_value: str, current_state: dict) -> str:
     """
-    参数渲染器：将 ${{ state.node_outputs.xxx }} 占位符替换为真实值
-    支持嵌套路径：node_outputs.xxx.output, node_outputs.xxx.data.arg1
+    字符串占位符替换
+    
+    支持语法：${state.node_outputs.xxx}
     """
-    pattern = re.compile(r"\$\{\{\s*state\.([\w.]+)\s*\}\}")
+    pattern = re.compile(r"\$\{state\.([\w.]+)\}")
     
     def replace_match(match):
         path = match.group(1)
-        
         parts = path.split(".")
         value = current_state
         for part in parts:
@@ -156,10 +156,29 @@ def render_params(raw_value: str, current_state: dict) -> str:
                 value = value.get(part, "")
             else:
                 return match.group(0)
-        
         return str(value) if value is not None else ""
     
     return pattern.sub(replace_match, raw_value)
+
+
+def render_params(raw_value: Any, current_state: dict) -> Any:
+    """
+    参数渲染器：递归处理嵌套结构，替换占位符
+    
+    支持的数据类型：
+    - 字符串：替换 ${state.xxx} 占位符
+    - 列表：递归处理每个元素
+    - 字典：递归处理每个值
+    - 其他类型：原样返回
+    """
+    if isinstance(raw_value, str):
+        return _render_string(raw_value, current_state)
+    elif isinstance(raw_value, list):
+        return [render_params(item, current_state) for item in raw_value]
+    elif isinstance(raw_value, dict):
+        return {k: render_params(v, current_state) for k, v in raw_value.items()}
+    else:
+        return raw_value
 
 
 class GraphExecutor:
@@ -352,10 +371,7 @@ class GraphExecutor:
             return {"output": "Tool action is None", "error": True}
 
         tool_name = tool_action.tool_name
-        kwargs = {
-            k: render_params(str(v), state)
-            for k, v in tool_action.tool_kwargs.items()
-        }
+        kwargs = render_params(tool_action.tool_kwargs, state)
 
         logger.info(f"Calling MCP tool: {tool_name}({kwargs})")
 
@@ -384,8 +400,8 @@ class GraphExecutor:
 
         executable = script_action.executable
         script_path = script_action.script_path
-        args = [render_params(arg, state) for arg in script_action.args]
-        env_vars = script_action.env_vars
+        args = render_params(script_action.args, state)
+        env_vars = render_params(script_action.env_vars, state)
 
         if executable == "python":
             executable = sys.executable
