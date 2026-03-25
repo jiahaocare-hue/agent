@@ -16,7 +16,9 @@ from config import settings
 from database import TaskRepository
 from engine import BackendEngine
 from command_parser import CommandParser, CommandExecutor
-from main_agent import MainAgent, TaskDecision, DirectResponse, TaskInfo, ScheduledInfo
+from main_agent import MainAgent, TaskDecision, DirectResponse, TaskInfo, ScheduledInfo, KnowledgeQAResponse
+from vector_store import KnowledgeBaseStore
+from knowledge_qa import KnowledgeQAService
 from subagent import initialize_skills, AgentFactory
 from mcp_manager import MCPManager
 from logging_config import setup_logging, get_logger
@@ -123,6 +125,12 @@ def main():
     
     MCPManager.register_default_modules()
     
+    knowledge_store = KnowledgeBaseStore()
+    knowledge_qa_service = KnowledgeQAService(
+        vector_store=knowledge_store,
+        llm_model=settings.knowledge_llm_model if settings.knowledge_llm_model else None
+    )
+    
     base_dir = os.path.dirname(__file__)
     skills_dir = os.path.join(base_dir, "skills")
     subagent_dir = os.path.join(base_dir, "subagent_skills")
@@ -153,6 +161,8 @@ def main():
 
     logger.info("Backend Engine started. Type 'exit' to quit.")
     logger.info("Type '/help' for available commands.\n")
+    
+    last_knowledge_summary = None
 
     try:
         while True:
@@ -174,7 +184,12 @@ def main():
                     continue
 
             try:
-                response = main_agent.decide_with_logging(user_input, thread_id="main-session")
+                if last_knowledge_summary:
+                    enhanced_input = f"[上一轮知识问答摘要: {last_knowledge_summary}]\n\n用户输入: {user_input}"
+                    response = main_agent.decide_with_logging(enhanced_input, thread_id="main-session")
+                    last_knowledge_summary = None
+                else:
+                    response = main_agent.decide_with_logging(user_input, thread_id="main-session")
             except Exception as e:
                 logger.error(f"主 Agent 决策失败: {e}")
                 continue
@@ -183,6 +198,23 @@ def main():
                 logger.info(f"\n=== 直接响应 ===")
                 logger.info(response.response)
                 logger.info("=" * 30 + "\n")
+                continue
+            
+            if isinstance(response, KnowledgeQAResponse):
+                logger.info(f"\n=== 知识问答 ===")
+                logger.info(f"问题: {response.question}")
+                
+                try:
+                    answer, summary = knowledge_qa_service.process_question(
+                        response.question,
+                        top_k=settings.knowledge_top_k
+                    )
+                    logger.info(f"\n答案:\n{answer}")
+                    logger.info("=" * 30 + "\n")
+                    
+                    last_knowledge_summary = summary
+                except Exception as e:
+                    logger.error(f"知识问答处理失败: {e}")
                 continue
 
             decision = response

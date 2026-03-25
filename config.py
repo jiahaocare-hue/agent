@@ -21,6 +21,11 @@ class Settings(BaseSettings):
     max_workflow_retries: int = 5
     embedding_model_path: str = ""
     
+    # 知识库配置
+    knowledge_base_path: str = "./knowledge_docs"
+    knowledge_top_k: int = 5
+    knowledge_llm_model: str = ""
+    
     log_level: str = "INFO"
     log_format: str = "%(asctime)s - %(name)s - %(levelname)s - %(message)s"
     

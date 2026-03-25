@@ -46,6 +46,12 @@ class ScheduledInfo(BaseModel):
     )
 
 
+class KnowledgeQAResponse(BaseModel):
+    """知识问答响应，旁路处理"""
+    question: str = Field(description="用户的原始问题")
+    reason: str = Field(description="为什么选择知识问答")
+
+
 class DirectResponse(BaseModel):
     """直接返回给用户的响应，不创建任务"""
     response: str = Field(description="直接返回给用户的回答内容")
@@ -85,7 +91,7 @@ class MainAgent:
         ]
         
         self.response_format = ToolStrategy(
-            Union[DirectResponse, TaskDecision],
+            Union[DirectResponse, TaskDecision, KnowledgeQAResponse],
             handle_errors=True,
         )
 
@@ -234,6 +240,12 @@ class MainAgent:
 
 你需要根据用户输入选择合适的响应类型：
 
+### 使用 KnowledgeQAResponse 的情况：
+- 用户询问资料内容（如"第三篇文章里提到的协议叫什么？"）
+- 用户请求查阅知识库（如"帮我查一下关于XXX的内容"）
+- 用户请求总结文章（如"总结一下第一篇文章的内容"）
+- 用户询问已存储文档中的信息
+
 ### 使用 DirectResponse 的情况：
 - 用户询问系统信息（如"有哪些可用的 agent？"）
 - 用户询问当前状态（如"现在有什么任务在运行？"）
@@ -249,6 +261,7 @@ class MainAgent:
 **重要**：
 - 如果用户只是询问信息，使用 DirectResponse
 - 如果用户请求执行操作，使用 TaskDecision
+- 如果用户询问知识库中的内容，使用 KnowledgeQAResponse
 - **如果用户请求的任务类型没有对应的 Agent，使用 DirectResponse 告诉用户"当前系统不支持该任务类型"**
 """
     
