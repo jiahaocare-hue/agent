@@ -422,9 +422,10 @@ class BackendEngine:
         try:
             result = future.result()
             status = result.get("status", "completed")
+            output = result.get("output", "")
+            error = result.get("error")
             
             if status == "completed":
-                output = result.get("output", "")
                 self.repo.update_status(task_id, "completed", output=output)
                 
                 workflow_json = result.get("workflow_json")
@@ -440,13 +441,47 @@ class BackendEngine:
                 self.repo.update_status(task_id, "cancelled")
                 logger.info(f"Task {task_id} was cancelled")
             else:
-                error = result.get("error", "Unknown error")
-                self.repo.update_status(task_id, "failed", error=error)
+                self.repo.update_status(task_id, "failed", output=output, error=error)
+                logger.error(f"Task {task_id} failed: {error}")
+            
+            self._show_task_complete_popup(task_id, status, output, error)
+            
         except Exception as e:
-            self.repo.update_status(task_id, "failed", error=str(e))
+            error_msg = f"Task {task_id} callback error: {str(e)}"
+            logger.error(error_msg)
+            self.repo.update_status(task_id, "failed", output=str(e), error=str(e))
+            self._show_task_complete_popup(task_id, "failed", str(e), str(e))
 
         self.timer_scheduler.on_task_completed(task_id)
         self.wakeup()
+    
+    def _show_task_complete_popup(self, task_id: int, status: str, output: str, error: str = None):
+        """显示任务完成弹窗"""
+        try:
+            import subprocess
+            import sys
+            from human_loop import get_popup_worker_path
+            
+            payload = {
+                "type": "task_complete",
+                "task_id": task_id,
+                "status": status,
+                "output": output,
+                "error": error
+            }
+            
+            popup_worker_path = get_popup_worker_path()
+            process = subprocess.run(
+                [sys.executable, popup_worker_path],
+                input=json.dumps(payload, ensure_ascii=False),
+                capture_output=True,
+                text=True,
+                timeout=120
+            )
+        except subprocess.TimeoutExpired:
+            logger.info(f"任务完成弹窗超时，已自动关闭")
+        except Exception as e:
+            logger.error(f"显示任务完成弹窗失败: {e}")
 
     def get_status(self) -> dict:
         with self._lock:

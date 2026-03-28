@@ -156,6 +156,12 @@ def _render_string(raw_value: str, current_state: dict) -> str:
                 value = value.get(part, "")
             else:
                 return match.group(0)
+        
+        # 如果值是字典，转为 JSON 字符串并转义双引号
+        if isinstance(value, dict):
+            json_str = json.dumps(value, ensure_ascii=False)
+            return json_str.replace('"', '\\"')
+        
         return str(value) if value is not None else ""
     
     return pattern.sub(replace_match, raw_value)
@@ -231,9 +237,9 @@ class GraphExecutor:
             if edge.is_conditional:
                 self._add_conditional_edge(graph, edge)
             elif target == "END":
-                graph.add_edge(source, END)
+                self._add_error_aware_edge(graph, source, END)
             else:
-                graph.add_edge(source, target)
+                self._add_error_aware_edge(graph, source, target)
 
         return graph
 
@@ -293,6 +299,23 @@ class GraphExecutor:
             full_routing_map
         )
 
+    def _add_error_aware_edge(self, graph: StateGraph, source: str, target: str):
+        """添加带错误检查的边"""
+        def route_on_error(state: AgentState) -> str:
+            error_value = state.get("node_outputs", {}).get(source, {}).get("error")
+            if error_value is True or error_value == "true" or error_value == "True":
+                return "__end__"
+            return target
+        
+        route_on_error.__name__ = f"route_{source}_error_check"
+        
+        actual_target = END if target == "END" else target
+        graph.add_conditional_edges(
+            source,
+            route_on_error,
+            {target: actual_target, "__end__": END}
+        )
+
     def execute(self, graph: StateGraph, initial_state: dict, task_id: int) -> dict:
         compiled_graph = graph.compile(checkpointer=self.checkpointer)
         config = {"configurable": {"thread_id": str(task_id)}}
@@ -333,7 +356,8 @@ class GraphExecutor:
                     "node_outputs": {
                         node_id: {
                             "output": "cancelled",
-                            "cancelled": True
+                            "cancelled": True,
+                            "error": True
                         }
                     }
                 }

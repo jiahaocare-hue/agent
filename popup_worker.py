@@ -120,6 +120,98 @@ def show_missing_params_popup(missing_params: List[str], reply_message: str):
     print(json.dumps(result, ensure_ascii=False))
 
 
+def show_task_complete_popup(task_id: int, status: str, output: str, error: str = None):
+    """
+    显示任务完成弹窗
+    
+    Args:
+        task_id: 任务 ID
+        status: 任务状态 (completed, failed, cancelled)
+        output: 任务输出
+        error: 错误信息（如果有）
+    """
+    result = {"closed": True}
+
+    def on_close():
+        result["closed"] = True
+        root.destroy()
+
+    def on_auto_close():
+        """自动关闭"""
+        if root.winfo_exists():
+            root.destroy()
+
+    root = tk.Tk()
+    
+    if status == "completed":
+        root.title(f"任务 {task_id} - 执行成功")
+        title_text = "✅ 任务执行成功"
+        title_color = "green"
+    elif status == "cancelled":
+        root.title(f"任务 {task_id} - 已取消")
+        title_text = "⚠️ 任务已取消"
+        title_color = "orange"
+    else:
+        root.title(f"任务 {task_id} - 执行失败")
+        title_text = "❌ 任务执行失败"
+        title_color = "red"
+    
+    root.geometry("500x400")
+    root.attributes("-topmost", True)
+    
+    # 标题
+    title_label = ttk.Label(root, text=title_text, font=("Arial", 14, "bold"), foreground=title_color)
+    title_label.pack(pady=10)
+    
+    # 输出内容
+    ttk.Label(root, text="执行结果：", font=("Arial", 10, "bold")).pack(anchor=tk.W, padx=20)
+    
+    output_frame = ttk.Frame(root)
+    output_frame.pack(fill=tk.BOTH, expand=True, padx=20, pady=5)
+    
+    output_text = tk.Text(
+        output_frame,
+        height=10,
+        width=50,
+        wrap=tk.WORD,
+        font=("Arial", 10)
+    )
+    output_text.pack(fill=tk.BOTH, expand=True)
+    output_text.insert(tk.END, output or "无输出")
+    output_text.config(state=tk.DISABLED)
+    
+    # 错误信息（如果有）
+    if error:
+        ttk.Label(root, text="错误信息：", font=("Arial", 10, "bold"), foreground="red").pack(anchor=tk.W, padx=20)
+        error_frame = ttk.Frame(root)
+        error_frame.pack(fill=tk.BOTH, expand=True, padx=20, pady=5)
+        
+        error_text = tk.Text(
+            error_frame,
+            height=3,
+            width=50,
+            wrap=tk.WORD,
+            font=("Arial", 10),
+            foreground="red"
+        )
+        error_text.pack(fill=tk.BOTH, expand=True)
+        error_text.insert(tk.END, error)
+        error_text.config(state=tk.DISABLED)
+    
+    # 关闭按钮
+    ttk.Button(root, text="关闭", command=on_close).pack(pady=10)
+    
+    # 点击关闭按钮时
+    root.protocol("WM_DELETE_WINDOW", on_close)
+    
+    # 60 秒后自动关闭
+    root.after(60000, on_auto_close)
+    
+    root.mainloop()
+    
+    print(json.dumps(result, ensure_ascii=False))
+
+
 if __name__ == "__main__":
     try:
         input_data = sys.stdin.read()
@@ -131,6 +223,12 @@ if __name__ == "__main__":
             missing_params = payload.get("missing_params", [])
             reply_message = payload.get("reply_message", "请补充以下信息：")
             show_missing_params_popup(missing_params, reply_message)
+        elif popup_type == "task_complete":
+            task_id = int(payload.get("task_id", 0))
+            status = payload.get("status", "completed")
+            output = payload.get("output", "")
+            error = payload.get("error")
+            show_task_complete_popup(task_id, status, output, error)
         else:
             task_id = int(payload.get("task_id", 0))
             workflow_description = payload.get("description", "")
