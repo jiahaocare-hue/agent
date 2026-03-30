@@ -133,6 +133,14 @@ class CommandParser:
                 "command_type": "reset_workflows",
                 "target": None,
             }
+        elif cmd in ["delete-workflow", "dw"]:
+            if not args:
+                return {"is_command": False, "error": "请指定要删除的 task_id，例如: /delete-workflow 123"}
+            return {
+                "is_command": True,
+                "command_type": "delete_workflow",
+                "target": args[0],
+            }
         else:
             return {"is_command": False, "error": f"未知命令: {cmd}"}
 
@@ -161,6 +169,8 @@ class CommandExecutor:
             return self.execute_help()
         elif command_type == 'reset_workflows':
             return self.execute_reset_workflows()
+        elif command_type == 'delete_workflow':
+            return self.execute_delete_workflow(target)
         else:
             return f"未知命令类型: {command_type}"
 
@@ -292,6 +302,7 @@ class CommandExecutor:
   /cancel all <status>            - 批量取消任务 (status: scheduled/running/pending)
   /clear, /cls                    - 清除 MainAgent 的历史记忆
   /reset-workflows, /rw           - 清空成功工作流案例库
+  /delete-workflow <task_id>, /dw <task_id> - 删除指定任务的 workflow 记录
   /help, /h                       - 显示帮助信息"""
         return help_text
 
@@ -301,7 +312,7 @@ class CommandExecutor:
         
         try:
             store = WorkflowVectorStore()
-            count = store.collection.count()
+            count = store.count()
             
             if count == 0:
                 return "成功工作流案例库为空，无需清空。"
@@ -311,12 +322,27 @@ class CommandExecutor:
             if not prompt_confirmation(message):
                 return "操作已取消"
             
-            store.client.delete_collection("successful_workflows")
-            store.collection = store.client.get_or_create_collection(
-                name="successful_workflows",
-                metadata={"hnsw:space": "cosine"}
-            )
-            
-            return f"已清空成功工作流案例库（删除了 {count} 条记录）。"
+            deleted_count = store.clear()
+            return f"已清空成功工作流案例库（删除了 {deleted_count} 条记录）。"
         except Exception as e:
             return f"清空失败: {str(e)}"
+
+    def execute_delete_workflow(self, task_id_str: str) -> str:
+        """删除指定任务的 workflow 记录"""
+        try:
+            task_id = int(task_id_str)
+        except ValueError:
+            return f"无效的 task_id: {task_id_str}，请输入有效的数字"
+        
+        from database import WorkflowRepository
+        repo = WorkflowRepository(self.task_repo.db_path)
+        
+        workflow = repo.get_workflow(task_id)
+        if not workflow:
+            return f"task_id {task_id} 没有对应的 workflow 记录"
+        
+        success = repo.delete_workflow(task_id)
+        if success:
+            return f"已删除 task_id {task_id} 的 workflow 记录"
+        else:
+            return f"删除 task_id {task_id} 的 workflow 记录失败"

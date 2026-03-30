@@ -25,7 +25,7 @@ PARALLEL_TEMPLATE = WorkflowTemplate(
                 "script_action": {
                     "executable": "python",
                     "script_path": "/path/to/task_a.py",
-                    "args": ["--input", "${input}"]
+                    "args": ["{\"input\": \"${input}\"}"]
                 }
             },
             {
@@ -34,7 +34,7 @@ PARALLEL_TEMPLATE = WorkflowTemplate(
                 "script_action": {
                     "executable": "python",
                     "script_path": "/path/to/task_b.py",
-                    "args": ["--input", "${input}"]
+                    "args": ["{\"input\": \"${input}\"}"]
                 }
             },
             {
@@ -43,7 +43,7 @@ PARALLEL_TEMPLATE = WorkflowTemplate(
                 "script_action": {
                     "executable": "python",
                     "script_path": "/path/to/merge.py",
-                    "args": ["--result_a", "${node_outputs.task_a.output}", "--result_b", "${node_outputs.task_b.output}"]
+                    "args": ["{\"result_a\": \"${node_outputs.task_a.output}\", \"result_b\": \"${node_outputs.task_b.output}\"}"]
                 }
             }
         ],
@@ -73,7 +73,7 @@ CONDITIONAL_TEMPLATE = WorkflowTemplate(
                 "script_action": {
                     "executable": "python",
                     "script_path": "/path/to/check.py",
-                    "args": ["--input", "${input}"]
+                    "args": ["{\"input\": \"${input}\"}"]
                 }
             },
             {
@@ -129,7 +129,7 @@ RETRY_TEMPLATE = WorkflowTemplate(
                 "script_action": {
                     "executable": "python",
                     "script_path": "/path/to/main_task.py",
-                    "args": ["--input", "${input}"]
+                    "args": ["{\"input\": \"${input}\"}"]
                 }
             },
             {
@@ -138,7 +138,7 @@ RETRY_TEMPLATE = WorkflowTemplate(
                 "script_action": {
                     "executable": "python",
                     "script_path": "/path/to/main_task.py",
-                    "args": ["--input", "${input}", "--retry", "true"]
+                    "args": ["{\"input\": \"${input}\", \"retry\": \"true\"}"]
                 }
             }
         ],
@@ -175,7 +175,7 @@ MULTI_STAGE_TEMPLATE = WorkflowTemplate(
                 "script_action": {
                     "executable": "python",
                     "script_path": "/path/to/stage1.py",
-                    "args": ["--input", "${input}"]
+                    "args": ["{\"input\": \"${input}\"}"]
                 }
             },
             {
@@ -184,7 +184,7 @@ MULTI_STAGE_TEMPLATE = WorkflowTemplate(
                 "script_action": {
                     "executable": "python",
                     "script_path": "/path/to/stage2.py",
-                    "args": ["--input", "${node_outputs.stage1.output}"]
+                    "args": ["{\"input\": \"${node_outputs.stage1.output}\"}"]
                 }
             },
             {
@@ -193,7 +193,7 @@ MULTI_STAGE_TEMPLATE = WorkflowTemplate(
                 "script_action": {
                     "executable": "python",
                     "script_path": "/path/to/stage3.py",
-                    "args": ["--input", "${node_outputs.stage2.output}"]
+                    "args": ["{\"input\": \"${node_outputs.stage2.output}\"}"]
                 }
             }
         ],
@@ -222,7 +222,7 @@ ERROR_HANDLER_TEMPLATE = WorkflowTemplate(
                 "script_action": {
                     "executable": "python",
                     "script_path": "/path/to/main_task.py",
-                    "args": ["--input", "${input}"]
+                    "args": ["{\"input\": \"${input}\"}"]
                 }
             },
             {
@@ -231,7 +231,7 @@ ERROR_HANDLER_TEMPLATE = WorkflowTemplate(
                 "script_action": {
                     "executable": "python",
                     "script_path": "/path/to/error_handler.py",
-                    "args": ["--error", "${node_outputs.main_task.error}"]
+                    "args": ["{\"error\": \"${node_outputs.main_task.error}\"}"]
                 }
             }
         ],
@@ -268,7 +268,7 @@ SCATTER_GATHER_TEMPLATE = WorkflowTemplate(
                 "script_action": {
                     "executable": "python",
                     "script_path": "/path/to/worker.py",
-                    "args": ["--target", "target1", "--input", "${input}"]
+                    "args": ["{\"target\": \"target1\", \"input\": \"${input}\"}"]
                 }
             },
             {
@@ -277,7 +277,7 @@ SCATTER_GATHER_TEMPLATE = WorkflowTemplate(
                 "script_action": {
                     "executable": "python",
                     "script_path": "/path/to/worker.py",
-                    "args": ["--target", "target2", "--input", "${input}"]
+                    "args": ["{\"target\": \"target2\", \"input\": \"${input}\"}"]
                 }
             },
             {
@@ -286,7 +286,7 @@ SCATTER_GATHER_TEMPLATE = WorkflowTemplate(
                 "script_action": {
                     "executable": "python",
                     "script_path": "/path/to/worker.py",
-                    "args": ["--target", "target3", "--input", "${input}"]
+                    "args": ["{\"target\": \"target3\", \"input\": \"${input}\"}"]
                 }
             },
             {
@@ -295,11 +295,7 @@ SCATTER_GATHER_TEMPLATE = WorkflowTemplate(
                 "script_action": {
                     "executable": "python",
                     "script_path": "/path/to/gather.py",
-                    "args": [
-                        "--result1", "${node_outputs.node_1.output}",
-                        "--result2", "${node_outputs.node_2.output}",
-                        "--result3", "${node_outputs.node_3.output}"
-                    ]
+                    "args": ["{\"result1\": \"${node_outputs.node_1.output}\", \"result2\": \"${node_outputs.node_2.output}\", \"result3\": \"${node_outputs.node_3.output}\"}"]
                 }
             }
         ],
@@ -331,7 +327,7 @@ CASCADE_TEMPLATE = WorkflowTemplate(
                 "script_action": {
                     "executable": "python",
                     "script_path": "/path/to/step1.py",
-                    "args": ["--input", "${input}"]
+                    "args": ["{\"input\": \"${input}\"}"]
                 }
             },
             {
@@ -340,7 +336,7 @@ CASCADE_TEMPLATE = WorkflowTemplate(
                 "script_action": {
                     "executable": "python",
                     "script_path": "/path/to/step2.py",
-                    "args": ["--input", "${node_outputs.step1.output}"]
+                    "args": ["{\"input\": \"${node_outputs.step1.output}\"}"]
                 }
             },
             {
@@ -349,7 +345,7 @@ CASCADE_TEMPLATE = WorkflowTemplate(
                 "script_action": {
                     "executable": "python",
                     "script_path": "/path/to/step3.py",
-                    "args": ["--input", "${node_outputs.step2.output}"]
+                    "args": ["{\"input\": \"${node_outputs.step2.output}\"}"]
                 }
             }
         ],
@@ -378,7 +374,7 @@ RACING_TEMPLATE = WorkflowTemplate(
                 "script_action": {
                     "executable": "python",
                     "script_path": "/path/to/task_a.py",
-                    "args": ["--input", "${input}"]
+                    "args": ["{\"input\": \"${input}\"}"]
                 }
             },
             {
@@ -387,7 +383,7 @@ RACING_TEMPLATE = WorkflowTemplate(
                 "script_action": {
                     "executable": "python",
                     "script_path": "/path/to/task_b.py",
-                    "args": ["--input", "${input}"]
+                    "args": ["{\"input\": \"${input}\"}"]
                 }
             },
             {
@@ -396,7 +392,7 @@ RACING_TEMPLATE = WorkflowTemplate(
                 "script_action": {
                     "executable": "python",
                     "script_path": "/path/to/task_c.py",
-                    "args": ["--input", "${input}"]
+                    "args": ["{\"input\": \"${input}\"}"]
                 }
             }
         ],
@@ -427,7 +423,7 @@ STATE_MACHINE_TEMPLATE = WorkflowTemplate(
                 "script_action": {
                     "executable": "python",
                     "script_path": "/path/to/check_state.py",
-                    "args": ["--input", "${input}"]
+                    "args": ["{\"input\": \"${input}\"}"]
                 }
             },
             {
@@ -494,7 +490,7 @@ FAN_OUT_FAN_IN_TEMPLATE = WorkflowTemplate(
                 "script_action": {
                     "executable": "python",
                     "script_path": "/path/to/fan_out.py",
-                    "args": ["--input", "${input}"]
+                    "args": ["{\"input\": \"${input}\"}"]
                 }
             },
             {
@@ -503,7 +499,7 @@ FAN_OUT_FAN_IN_TEMPLATE = WorkflowTemplate(
                 "script_action": {
                     "executable": "python",
                     "script_path": "/path/to/worker.py",
-                    "args": ["--id", "1", "--data", "${node_outputs.fan_out.data_1}"]
+                    "args": ["{\"id\": \"1\", \"data\": \"${node_outputs.fan_out.data_1}\"}"]
                 }
             },
             {
@@ -512,7 +508,7 @@ FAN_OUT_FAN_IN_TEMPLATE = WorkflowTemplate(
                 "script_action": {
                     "executable": "python",
                     "script_path": "/path/to/worker.py",
-                    "args": ["--id", "2", "--data", "${node_outputs.fan_out.data_2}"]
+                    "args": ["{\"id\": \"2\", \"data\": \"${node_outputs.fan_out.data_2}\"}"]
                 }
             },
             {
@@ -521,10 +517,7 @@ FAN_OUT_FAN_IN_TEMPLATE = WorkflowTemplate(
                 "script_action": {
                     "executable": "python",
                     "script_path": "/path/to/fan_in.py",
-                    "args": [
-                        "--result1", "${node_outputs.worker_1.output}",
-                        "--result2", "${node_outputs.worker_2.output}"
-                    ]
+                    "args": ["{\"result1\": \"${node_outputs.worker_1.output}\", \"result2\": \"${node_outputs.worker_2.output}\"}"]
                 }
             }
         ],

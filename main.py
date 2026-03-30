@@ -139,7 +139,8 @@ def main():
 
     custom_serde = JsonPlusSerializer(allowed_msgpack_modules=[
         ('main_agent', 'TaskDecision'),
-        ('main_agent', 'DirectResponse')
+        ('main_agent', 'DirectResponse'),
+        ('main_agent', 'KnowledgeQAResponse')
     ])
     db_dir = os.path.dirname(settings.main_agent_checkpoint_db)
     if db_dir and not os.path.exists(db_dir):

@@ -162,6 +162,10 @@ def _render_string(raw_value: str, current_state: dict) -> str:
             json_str = json.dumps(value, ensure_ascii=False)
             return json_str.replace('"', '\\"')
         
+        # 如果值是字符串，转义其中的特殊字符（双引号、反斜杠、换行符等）
+        if isinstance(value, str):
+            return value.replace('\\', '\\\\').replace('"', '\\"').replace('\n', '\\n').replace('\r', '\\r')
+        
         return str(value) if value is not None else ""
     
     return pattern.sub(replace_match, raw_value)

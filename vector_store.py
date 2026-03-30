@@ -74,6 +74,21 @@ class WorkflowVectorStore:
                 })
         
         return workflows
+    
+    def count(self) -> int:
+        return self.collection.count()
+    
+    def clear(self) -> int:
+        """清空工作流案例库，返回删除的记录数"""
+        count = self.collection.count()
+        embedding_function = self.collection._embedding_function
+        self.client.delete_collection(name="successful_workflows")
+        self.collection = self.client.get_or_create_collection(
+            name="successful_workflows",
+            metadata={"hnsw:space": "cosine"},
+            embedding_function=embedding_function
+        )
+        return count
 
 
 class KnowledgeBaseStore:
