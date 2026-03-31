@@ -126,3 +126,75 @@ def update_setting(key: str, value: str) -> Tuple[bool, str]:
         return False, f"保存到 .env 文件失败: {str(e)}"
     
     return True, f"配置 '{key}' 已更新为 '{value}'"
+
+
+def update_settings_full(config: Dict[str, Any]) -> Tuple[bool, str]:
+    """
+    全量更新配置
+    
+    Args:
+        config: 包含所有配置项的字典
+    
+    Returns:
+        (success, message)
+    """
+    errors = []
+    
+    for key, value in config.items():
+        if key not in CONFIG_SCHEMA:
+            errors.append(f"未知配置项: {key}")
+            continue
+        
+        expected_type = CONFIG_SCHEMA[key]["type"]
+        
+        try:
+            if expected_type == int:
+                converted_value = int(value)
+            elif expected_type == float:
+                converted_value = float(value)
+            else:
+                converted_value = str(value)
+            
+            setattr(settings, key, converted_value)
+        except (ValueError, TypeError) as e:
+            errors.append(f"{key}: 类型转换失败 - {e}")
+    
+    if errors:
+        return False, "; ".join(errors)
+    
+    env_path = ".env"
+    try:
+        with open(env_path, "r", encoding="utf-8") as f:
+            lines = f.readlines()
+    except FileNotFoundError:
+        lines = []
+    
+    new_lines = []
+    updated_keys = set()
+    
+    for line in lines:
+        stripped = line.strip()
+        updated = False
+        for key, value in config.items():
+            env_key = key.upper()
+            if stripped.startswith(f"{env_key}=") or stripped.startswith(f"{env_key} ="):
+                new_lines.append(f"{env_key}={value}\n")
+                updated_keys.add(key)
+                updated = True
+                break
+        if not updated:
+            new_lines.append(line)
+    
+    for key, value in config.items():
+        if key not in updated_keys:
+            if new_lines and not new_lines[-1].endswith("\n"):
+                new_lines.append("\n")
+            new_lines.append(f"{key.upper()}={value}\n")
+    
+    try:
+        with open(env_path, "w", encoding="utf-8") as f:
+            f.writelines(new_lines)
+    except Exception as e:
+        return False, f"保存到 .env 文件失败: {str(e)}"
+    
+    return True, "配置已更新"
