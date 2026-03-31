@@ -141,6 +141,23 @@ class CommandParser:
                 "command_type": "delete_workflow",
                 "target": args[0],
             }
+        elif cmd == "config":
+            if not args:
+                return {"is_command": True, "command_type": "config", "action": "list"}
+            
+            action = args[0].lower()
+            if action == "list":
+                return {"is_command": True, "command_type": "config", "action": "list"}
+            elif action == "get":
+                if len(args) < 2:
+                    return {"is_command": False, "error": "用法: /config get <key>"}
+                return {"is_command": True, "command_type": "config", "action": "get", "key": args[1]}
+            elif action == "set":
+                if len(args) < 3:
+                    return {"is_command": False, "error": "用法: /config set <key> <value>"}
+                return {"is_command": True, "command_type": "config", "action": "set", "key": args[1], "value": " ".join(args[2:])}
+            else:
+                return {"is_command": False, "error": "用法: /config [list|get <key>|set <key> <value>]"}
         else:
             return {"is_command": False, "error": f"未知命令: {cmd}"}
 
@@ -171,6 +188,12 @@ class CommandExecutor:
             return self.execute_reset_workflows()
         elif command_type == 'delete_workflow':
             return self.execute_delete_workflow(target)
+        elif command_type == 'config':
+            return self.execute_config(
+                parsed_command.get('action', 'list'),
+                parsed_command.get('key'),
+                parsed_command.get('value')
+            )
         else:
             return f"未知命令类型: {command_type}"
 
@@ -303,6 +326,9 @@ class CommandExecutor:
   /clear, /cls                    - 清除 MainAgent 的历史记忆
   /reset-workflows, /rw           - 清空成功工作流案例库
   /delete-workflow <task_id>, /dw <task_id> - 删除指定任务的 workflow 记录
+  /config                         - 查看所有配置
+  /config get <key>               - 查看指定配置
+  /config set <key> <value>       - 修改配置
   /help, /h                       - 显示帮助信息"""
         return help_text
 
@@ -346,3 +372,51 @@ class CommandExecutor:
             return f"已删除 task_id {task_id} 的 workflow 记录"
         else:
             return f"删除 task_id {task_id} 的 workflow 记录失败"
+
+    def execute_config(self, action: str, key: str = None, value: str = None) -> str:
+        """执行配置管理命令"""
+        from config import settings, get_config_schema, get_all_settings, update_setting
+        
+        if action == "list":
+            lines = ["当前配置:\n"]
+            all_settings = get_all_settings()
+            schema = get_config_schema()
+            
+            for k, v in all_settings.items():
+                desc = schema.get(k, {}).get("description", "")
+                is_sensitive = schema.get(k, {}).get("sensitive", False)
+                display_value = "******" if is_sensitive and str(v) else str(v)
+                lines.append(f"  {k}: {display_value}")
+                if desc:
+                    lines.append(f"    ({desc})")
+            
+            return "\n".join(lines)
+        
+        elif action == "get":
+            if key is None:
+                return "请指定配置项名称，用法: /config get <key>"
+            
+            schema = get_config_schema()
+            if key not in schema:
+                available = ", ".join(schema.keys())
+                return f"未知配置项: {key}\n可用的配置项: {available}"
+            
+            if not hasattr(settings, key):
+                return f"配置项 '{key}' 不存在"
+            
+            current_value = getattr(settings, key)
+            is_sensitive = schema.get(key, {}).get("sensitive", False)
+            display_value = "******" if is_sensitive else str(current_value)
+            desc = schema.get(key, {}).get("description", "")
+            
+            return f"{key}: {display_value}\n  ({desc})"
+        
+        elif action == "set":
+            if key is None or value is None:
+                return "用法: /config set <key> <value>"
+            
+            success, message = update_setting(key, value)
+            return message
+        
+        else:
+            return f"未知操作: {action}"
