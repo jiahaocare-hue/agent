@@ -198,3 +198,23 @@ def update_settings_full(config: Dict[str, Any]) -> Tuple[bool, str]:
         return False, f"保存到 .env 文件失败: {str(e)}"
     
     return True, "配置已更新"
+
+
+def get_llm():
+    """
+    动态获取 LLM 实例，每次调用时读取最新配置。
+    
+    Returns:
+        ChatOpenAI 实例
+    """
+    from langchain_openai import ChatOpenAI
+    
+    if not settings.llm_api_key:
+        raise ValueError("LLM_API_KEY 未配置，请在 .env 文件中设置")
+    
+    return ChatOpenAI(
+        base_url=settings.llm_base_url,
+        api_key=settings.llm_api_key,
+        model=settings.llm_model,
+        temperature=settings.llm_temperature,
+    )

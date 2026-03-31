@@ -81,12 +81,11 @@ class MainAgent:
     - 强制返回 TaskDecision 结构化输出
     """
 
-    def __init__(self, llm, checkpointer: SqliteSaver):
-        self.llm = llm
+    def __init__(self, checkpointer: SqliteSaver):
         self.checkpointer = checkpointer
         self.checkpointer.setup()
         
-        agent_tools = [
+        self.agent_tools = [
             self._create_list_available_agents_tool(),
         ]
         
@@ -94,15 +93,20 @@ class MainAgent:
             Union[DirectResponse, TaskDecision, KnowledgeQAResponse],
             handle_errors=True,
         )
-
+    
+    def _get_agent(self):
+        """每次调用时动态创建 agent，使用最新的 LLM 配置"""
+        from config import get_llm
+        
+        llm = get_llm()
         system_prompt = self._build_system_prompt()
         
-        self.agent = create_agent(
+        return create_agent(
             model=llm,
-            tools=agent_tools,
+            tools=self.agent_tools,
             system_prompt=system_prompt,
             response_format=self.response_format,
-            checkpointer=checkpointer,
+            checkpointer=self.checkpointer,
         )
     
     def _create_list_available_agents_tool(self):
@@ -284,7 +288,9 @@ class MainAgent:
     ) -> Union[DirectResponse, TaskDecision]:
         message = self._build_message(user_input)
         
-        result = self.agent.invoke(
+        agent = self._get_agent()
+        
+        result = agent.invoke(
             {"messages": [HumanMessage(content=message)]},
             config={"configurable": {"thread_id": thread_id}}
         )
@@ -299,7 +305,9 @@ class MainAgent:
         message = self._build_message(user_input)
         final_state = None
 
-        for chunk in self.agent.stream(
+        agent = self._get_agent()
+
+        for chunk in agent.stream(
             {"messages": [HumanMessage(content=message)]},
             config={"configurable": {"thread_id": thread_id}},
             stream_mode=["messages", "updates"],

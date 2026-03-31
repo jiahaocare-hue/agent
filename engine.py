@@ -6,7 +6,7 @@ from concurrent.futures import ThreadPoolExecutor
 from datetime import datetime
 from typing import Optional, Union, Dict
 
-from config import settings
+from config import settings, get_llm
 from database import TaskRepository, WorkflowRepository
 from graph_executor import GraphExecutor
 from mcp_manager import MCPManager
@@ -76,7 +76,6 @@ class BackendEngine:
     def __init__(
         self,
         max_workers: int = 3,
-        llm=None,
         repo: Optional[TaskRepository] = None,
     ):
         self.max_workers = max_workers
@@ -89,21 +88,7 @@ class BackendEngine:
         self._lock = threading.Lock()
         self.timer_scheduler = TimerScheduler(self.repo, self.wakeup)
         self.recovery_manager = RecoveryManager(self.repo, self.timer_scheduler)
-        self.llm = llm or self._create_default_llm()
         self.vector_store = WorkflowVectorStore()
-
-    def _create_default_llm(self):
-        from langchain_openai import ChatOpenAI
-        
-        if not settings.llm_api_key:
-            raise ValueError("LLM_API_KEY 未配置，请在 .env 文件中设置")
-        
-        return ChatOpenAI(
-            base_url=settings.llm_base_url,
-            api_key=settings.llm_api_key,
-            model=settings.llm_model,
-            temperature=settings.llm_temperature,
-        )
 
     def start(self):
         self.running = True
@@ -336,7 +321,8 @@ class BackendEngine:
 
         try:
             graph_executor = GraphExecutor(self.repo)
-            subagent = get_subagent(task_type, self.llm, raw_input)
+            llm = get_llm()
+            subagent = get_subagent(task_type, llm, raw_input)
             workflow_repo = WorkflowRepository(self.repo.db_path)
 
             workflow_json, workflow_generated = self._generate_workflow_with_confirmation(
