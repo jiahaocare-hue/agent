@@ -11,12 +11,54 @@ python llm_process.py '{"input": "你的提示词或数据"}'
 出参：
 - output: string, LLM 的输出结果
 """
+import os
 import sys
 import json
+from dotenv import load_dotenv, find_dotenv
+
+load_dotenv(find_dotenv())
+LLM_BASE_URL = os.environ["LLM_BASE_URL"]
+LLM_API_KEY = os.environ["LLM_API_KEY"]
+LLM_MODEL = os.environ["LLM_MODEL"]
+LLM_TEMPERATURE = os.environ["LLM_TEMPERATURE"]
+
+def parse_args():
+    """
+    解析命令行参数，支持两种格式：
+    1. JSON 格式：python script.py '{"input": "xxx"}'
+    2. 命令行参数格式：python script.py --input xxx
+    """
+    if len(sys.argv) < 2:
+        return {}
+    
+    first_arg = sys.argv[1]
+    
+    if first_arg.startswith('{'):
+        try:
+            return json.loads(first_arg)
+        except json.JSONDecodeError:
+            pass
+    
+    params = {}
+    i = 1
+    while i < len(sys.argv):
+        arg = sys.argv[i]
+        if arg.startswith('--'):
+            key = arg[2:]
+            if i + 1 < len(sys.argv) and not sys.argv[i + 1].startswith('--'):
+                params[key] = sys.argv[i + 1]
+                i += 2
+            else:
+                params[key] = True
+                i += 1
+        else:
+            i += 1
+    
+    return params
 
 
 def main():
-    params = json.loads(sys.argv[1]) if len(sys.argv) > 1 else {}
+    params = parse_args()
     
     input_content = params.get("input", "")
     
@@ -25,13 +67,12 @@ def main():
         return
     
     from langchain_openai import ChatOpenAI
-    from config import settings
-    
+
     llm = ChatOpenAI(
-        base_url=settings.llm_base_url,
-        api_key=settings.llm_api_key,
-        model=settings.llm_model,
-        temperature=0.0,
+        base_url=LLM_BASE_URL,
+        api_key=LLM_API_KEY,
+        model=LLM_MODEL,
+        temperature=LLM_TEMPERATURE,
     )
     
     response = llm.invoke(input_content)

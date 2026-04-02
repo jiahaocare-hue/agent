@@ -17,8 +17,43 @@ import os
 import hashlib
 
 
+def parse_args():
+    """
+    解析命令行参数，支持两种格式：
+    1. JSON 格式：python script.py '{"input": "xxx"}'
+    2. 命令行参数格式：python script.py --input xxx
+    """
+    if len(sys.argv) < 2:
+        return {}
+    
+    first_arg = sys.argv[1]
+    
+    if first_arg.startswith('{'):
+        try:
+            return json.loads(first_arg)
+        except json.JSONDecodeError:
+            pass
+    
+    params = {}
+    i = 1
+    while i < len(sys.argv):
+        arg = sys.argv[i]
+        if arg.startswith('--'):
+            key = arg[2:]
+            if i + 1 < len(sys.argv) and not sys.argv[i + 1].startswith('--'):
+                params[key] = sys.argv[i + 1]
+                i += 2
+            else:
+                params[key] = True
+                i += 1
+        else:
+            i += 1
+    
+    return params
+
+
 def main():
-    params = json.loads(sys.argv[1]) if len(sys.argv) > 1 else {}
+    params = parse_args()
     
     input_content = params.get("input", "")
     
