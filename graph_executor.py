@@ -218,9 +218,19 @@ class GraphExecutor:
         nodes = blueprint.nodes
         edges = blueprint.edges
 
+        upstream_map = {}
+        for edge in edges:
+            if edge.source != "START":
+                target = edge.target
+                if target not in upstream_map:
+                    upstream_map[target] = []
+                if edge.source not in upstream_map[target]:
+                    upstream_map[target].append(edge.source)
+
         for node in nodes:
             node_id = node.node_id
-            node_func = self._create_node_func(node)
+            upstream_nodes = upstream_map.get(node_id, [])
+            node_func = self._create_node_func(node, upstream_nodes)
             graph.add_node(node_id, node_func)
 
         start_targets = []
@@ -347,7 +357,7 @@ class GraphExecutor:
             return True
         return False
 
-    def _create_node_func(self, node_def: NodeDef):
+    def _create_node_func(self, node_def: NodeDef, upstream_nodes: list = None):
         def node_func(state: AgentState) -> dict:
             node_id = node_def.node_id
             task_id = state.get("task_id", 0)
@@ -365,6 +375,28 @@ class GraphExecutor:
                         }
                     }
                 }
+            
+            if upstream_nodes:
+                node_outputs = state.get("node_outputs", {})
+                for up_node in upstream_nodes:
+                    up_output = node_outputs.get(up_node, {})
+                    if isinstance(up_output, dict):
+                        if up_output.get("error") is True or up_output.get("error") in ("true", "True"):
+                            error_msg = f"上游节点 '{up_node}' 执行失败，跳过当前节点 '{node_id}'"
+                            logger.warning(error_msg)
+                            return {
+                                "current_node": node_id,
+                                "output": error_msg,
+                                "node_outputs": {node_id: {"output": error_msg, "error": True}}
+                            }
+                        if up_output.get("cancelled") is True or up_output.get("cancelled") in ("true", "True"):
+                            error_msg = f"上游节点 '{up_node}' 已取消，跳过当前节点 '{node_id}'"
+                            logger.warning(error_msg)
+                            return {
+                                "current_node": node_id,
+                                "output": error_msg,
+                                "node_outputs": {node_id: {"output": error_msg, "error": True}}
+                            }
             
             result = self._execute_node(node_def, state)
             
